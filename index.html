@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistem Manajemen Inventaris</title>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 font-sans">
+
+    <nav class="bg-blue-600 text-white p-4 shadow-md flex justify-between items-center">
+        <h1 class="text-xl font-bold">📦 GudangDigital</h1>
+        <div>
+            <label class="font-semibold mr-2">Masuk Sebagai:</label>
+            <select id="roleSelector" onchange="switchRole()" class="text-black p-1 rounded">
+                <option value="karyawan">Karyawan (Hanya Update Stok)</option>
+                <option value="admin">Admin (Akses Penuh)</option>
+            </select>
+        </div>
+    </nav>
+
+    <div class="container mx-auto p-6">
+        <div id="adminForm" class="bg-white p-6 rounded-lg shadow-md mb-6 hidden">
+            <h2 class="text-lg font-bold mb-4 text-blue-600">Tambah Barang Baru (Admin Only)</h2>
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <input type="text" id="pName" placeholder="Nama Barang" class="border p-2 rounded">
+                <input type="text" id="pSku" placeholder="SKU / Kode" class="border p-2 rounded">
+                <input type="number" id="pStock" placeholder="Stok Awal" class="border p-2 rounded">
+                <input type="text" id="pLocation" placeholder="Lokasi (Contoh: Rak A)" class="border p-2 rounded">
+            </div>
+            <button onclick="addProduct()" class="mt-4 bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">Simpan Barang</button>
+        </div>
+
+        <div class="bg-white p-6 rounded-lg shadow-md">
+            <h2 class="text-lg font-bold mb-4">Daftar Stok Barang</h2>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-gray-200 text-gray-700">
+                            <th class="p-3 border">SKU</th>
+                            <th class="p-3 border">Nama Barang</th>
+                            <th class="p-3 border">Stok</th>
+                            <th class="p-3 border">Lokasi</th>
+                            <th class="p-3 border">Aksi Karyawan / Admin</th>
+                        </tr>
+                    </thead>
+                    <tbody id="inventoryTable">
+                        </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div id="stockModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden">
+        <div class="bg-white p-6 rounded-lg shadow-lg w-96">
+            <h3 id="modalTitle" class="text-lg font-bold mb-4">Update Stok</h3>
+            <input type="hidden" id="modalProductId">
+            <div class="mb-4">
+                <label class="block mb-1">Jenis Transaksi</label>
+                <select id="transactionType" class="w-full border p-2 rounded">
+                    <option value="IN">Barang Masuk (+)</option>
+                    <option value="OUT">Barang Keluar (-)</option>
+                </select>
+            </div>
+            <div class="mb-4">
+                <label class="block mb-1">Jumlah</label>
+                <input type="number" id="transQuantity" class="w-full border p-2 rounded" min="1">
+            </div>
+            <div class="mb-4">
+                <label class="block mb-1">Nama Operator (Karyawan)</label>
+                <input type="text" id="transOperator" class="w-full border p-2 rounded" placeholder="Nama Anda">
+            </div>
+            <div class="flex justify-end gap-2">
+                <button onclick="closeModal()" class="bg-gray-400 text-white px-4 py-2 rounded">Batal</button>
+                <button onclick="submitStockUpdate()" class="bg-blue-600 text-white px-4 py-2 rounded">Proses</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // GANTI URL INI setelah Backend Anda selesai di-hosting
+        const API_URL = 'http://localhost:5000/api'; 
+
+        let currentRole = 'karyawan';
+
+        function switchRole() {
+            currentRole = document.getElementById('roleSelector').value;
+            const adminForm = document.getElementById('adminForm');
+            if (currentRole === 'admin') {
+                adminForm.classList.remove('hidden');
+            } else {
+                adminForm.classList.add('hidden');
+            }
+        }
+
+        async function fetchProducts() {
+            try {
+                const response = await axios.get(`${API_URL}/products`);
+                const products = response.data;
+                const tableBody = document.getElementById('inventoryTable');
+                tableBody.innerHTML = '';
+
+                products.forEach(p => {
+                    tableBody.innerHTML += `
+                        <tr class="hover:bg-gray-50">
+                            <td class="p-3 border font-mono text-sm">${p.sku}</td>
+                            <td class="p-3 border font-semibold">${p.name}</td>
+                            <td class="p-3 border ${p.stock < 10 ? 'text-red-600 font-bold' : 'text-gray-800'}">${p.stock} pcs</td>
+                            <td class="p-3 border text-sm text-gray-600">${p.location || '-'}</td>
+                            <td class="p-3 border">
+                                <button onclick="openModal(${p.id}, '${p.name}')" class="bg-blue-500 hover:bg-blue-600 text-white text-xs px-3 py-1 rounded">
+                                    ± Update Stok
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+                });
+            } catch (err) {
+                console.error("Gagal memuat data", err);
+            }
+        }
+
+        async function addProduct() {
+            const name = document.getElementById('pName').value;
+            const sku = document.getElementById('pSku').value;
+            const stock = document.getElementById('pStock').value;
+            const location = document.getElementById('pLocation').value;
+
+            if(!name || !sku) return alert('Nama dan SKU wajib diisi');
+
+            await axios.post(`${API_URL}/products`, { name, sku, stock, location });
+            alert('Barang berhasil disimpan!');
+            fetchProducts();
+        }
+
+        function openModal(id, name) {
+            document.getElementById('modalProductId').value = id;
+            document.getElementById('modalTitle').innerText = `Update Stok: ${name}`;
+            document.getElementById('stockModal').classList.remove('hidden');
+        }
+
+        function closeModal() {
+            document.getElementById('stockModal').classList.add('hidden');
+        }
+
+        async function submitStockUpdate() {
+            const id = document.getElementById('modalProductId').value;
+            const type = document.getElementById('transactionType').value;
+            const quantity = document.getElementById('transQuantity').value;
+            const operator = document.getElementById('transOperator').value;
+
+            if(!quantity || !operator) return alert('Semua kolom wajib diisi');
+
+            try {
+                await axios.post(`${API_URL}/products/update-stock`, { id, type, quantity, operator });
+                alert('Stok berhasil diperbarui!');
+                closeModal();
+                fetchProducts();
+            } catch (error) {
+                alert(error.response.data.error || 'Terjadi kesalahan');
+            }
+        }
+
+        // Load data pertama kali
+        fetchProducts();
+    </script>
+</body>
+</html>
