@@ -82,52 +82,56 @@
     </div>
 
     <script>
-        // URL Backend Serverless Vercel Anda yang Asli (Sudah Otomatis Menggunakan Rute Relatif Yang Benar)
-        const API_URL = '/api'; 
+        // Kredensial Kunci Supabase Pusat Anda (Sama seperti login.html)
+        const SUPABASE_URL = "https://kghjkyeksacozjuabiqe.supabase.co";
+        const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtnaGpreWVrc2Fjb3pqdWFiaXFlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk2ODY5MDksImV4cCI6MjA5NTI2MjkwOX0.khICdbLlwuTurpDoBwelzEhQCLrA04W4yx00dkFDhAw";
 
-        // 1. SATPAM PEMBATAS (AUTH GUARD): Cek token keamanan dari login.html
+        // 1. SATPAM PEMBATAS (AUTH GUARD)
         const sessionToken = localStorage.getItem('supabase.auth.token');
         const savedEmail = localStorage.getItem('user_email');
 
         if (!sessionToken) {
-            // Kalau tidak punya token (belum login), langsung tendang ke login.html
             window.location.href = 'login.html';
         }
 
         // 2. JALANKAN LOGIKA SETELAH HALAMAN SELESAI DIMUAT
         document.addEventListener('DOMContentLoaded', () => {
-            // Tampilkan email asli user yang login di navbar
             const emailDisplay = document.getElementById('user-email-display');
             if (emailDisplay) {
                 emailDisplay.textContent = savedEmail || 'Owner Gudang';
             }
 
-            // Pasang otomatis nama email di input nama operator modal biar tidak repot ngetik
             const transOperatorInput = document.getElementById('transOperator');
             if (transOperatorInput) {
                 transOperatorInput.value = savedEmail || 'Owner';
             }
 
-            // Ambil data produk pertama kali dari database backend
+            // Langsung panggil data barang dari Supabase
             fetchProducts();
         });
 
         // 3. FUNGSI LOGOUT TOTAL
         function logout() {
-            localStorage.clear(); // Bersihkan semua token pendaftaran
+            localStorage.clear();
             alert("Anda telah keluar dari sistem.");
-            window.location.href = 'login.html'; // Lempar balik ke gerbang login
+            window.location.href = 'login.html';
         }
 
-        // 4. FUNGSI AMBIL DATA BARANG DARI BACKEND VERCEL
+        // 4. FUNGSI AMBIL DATA BARANG (PANGGIL DATA LANGSUNG KELUAR)
         async function fetchProducts() {
             try {
-                const response = await axios.get(`${API_URL}/products`);
+                const response = await axios.get(`${SUPABASE_URL}/rest/v1/products?select=*`, {
+                    headers: {
+                        'apikey': SUPABASE_KEY,
+                        'Authorization': `Bearer ${SUPABASE_KEY}`
+                    }
+                });
+                
                 const products = response.data;
                 const tableBody = document.getElementById('inventoryTable');
                 tableBody.innerHTML = '';
 
-                if (products.length === 0) {
+                if (!products || products.length === 0) {
                     tableBody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-gray-500">Belum ada stok barang terdaftar. Silakan tambahkan di atas!</td></tr>`;
                     return;
                 }
@@ -152,29 +156,39 @@
             }
         }
 
-        // 5. FUNGSI SIMPAN BARANG BARU (KHUSUS OWNER)
+        // 5. FUNGSI SIMPAN BARANG BARU (TEMBAK LANGSUNG MASUK)
         async function addProduct() {
             const name = document.getElementById('pName').value;
             const sku = document.getElementById('pSku').value;
-            const stock = document.getElementById('pStock').value;
+            const stock = parseInt(document.getElementById('pStock').value) || 0;
             const location = document.getElementById('pLocation').value;
 
             if(!name || !sku) return alert('Nama Barang dan SKU wajib diisi!');
 
             try {
-                await axios.post(`${API_URL}/products`, { name, sku, stock, location });
+                await axios.post(`${SUPABASE_URL}/rest/v1/products`, 
+                { name, sku, stock, location },
+                {
+                    headers: {
+                        'apikey': SUPABASE_KEY,
+                        'Authorization': `Bearer ${SUPABASE_KEY}`,
+                        'Content-Type': 'application/json',
+                        'Prefer': 'return=minimal'
+                    }
+                });
+
                 alert('Barang baru berhasil disimpan ke gudang digital!');
                 
-                // Reset form input
+                // Reset form input biar bersih kembali
                 document.getElementById('pName').value = '';
                 document.getElementById('pSku').value = '';
                 document.getElementById('pStock').value = '';
                 document.getElementById('pLocation').value = '';
                 
-                fetchProducts(); // Refresh tabel
+                fetchProducts(); // Refresh tabel biar barang baru langsung muncul
             } catch (err) {
                 console.error(err);
-                alert('Gagal menambah barang baru.');
+                alert('Gagal menambah barang baru. Jika ini berlanjut, pastikan opsi RLS (Row Level Security) di tabel products Supabase Anda sudah di-disable atau di-izinkan.');
             }
         }
 
@@ -185,27 +199,48 @@
             document.getElementById('stockModal').classList.remove('hidden');
         }
 
+        // KONTROL MODAL TUTUP
         function closeModal() {
             document.getElementById('stockModal').classList.add('hidden');
             document.getElementById('transQuantity').value = '';
         }
 
-        // 7. PROSES UPDATE JUMLAH STOK BARANG
+        // 7. PROSES UPDATE JUMLAH STOK BARANG LANGSUNG KE BARIS PRODUK
         async function submitStockUpdate() {
             const id = document.getElementById('modalProductId').value;
             const type = document.getElementById('transactionType').value;
-            const quantity = document.getElementById('transQuantity').value;
-            const operator = document.getElementById('transOperator').value;
+            const quantity = parseInt(document.getElementById('transQuantity').value) || 0;
 
-            if(!quantity || !operator) return alert('Jumlah stok tidak boleh kosong!');
+            if(!quantity || quantity <= 0) return alert('Jumlah stok tidak boleh kosong atau bernilai 0!');
 
             try {
-                await axios.post(`${API_URL}/products/update-stock`, { id, type, quantity, operator });
+                // Ambil nilai stok lama saat ini untuk dikalkulasi secara realtime
+                const getProduct = await axios.get(`${SUPABASE_URL}/rest/v1/products?id=eq.${id}`, {
+                    headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
+                });
+                
+                let currentStock = getProduct.data[0].stock;
+                let newStock = type === 'IN' ? currentStock + quantity : currentStock - quantity;
+
+                if (newStock < 0) return alert('Gagal! Stok gudang tidak boleh minus.');
+
+                // Update total stok baru ke kolom database Supabase
+                await axios.patch(`${SUPABASE_URL}/rest/v1/products?id=eq.${id}`, 
+                { stock: newStock },
+                {
+                    headers: {
+                        'apikey': SUPABASE_KEY,
+                        'Authorization': `Bearer ${SUPABASE_KEY}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
                 alert('Stok barang berhasil diperbarui!');
                 closeModal();
-                fetchProducts(); // Refresh data tabel
+                fetchProducts(); // Refresh data biar angka di tabel langsung berubah
             } catch (error) {
-                alert(error.response?.data?.error || 'Terjadi kesalahan sistem saat update stok.');
+                console.error(error);
+                alert('Terjadi kesalahan sistem saat memproses kalkulasi update stok.');
             }
         }
     </script>
