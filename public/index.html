@@ -79,6 +79,41 @@
     </div>
 
     <script>
+
+        // 1. Cek apakah user sudah login (apakah ada token di LocalStorage)
+            const token = localStorage.getItem('userToken');
+            const role = localStorage.getItem('userRole');
+            const email = localStorage.getItem('userEmail');
+
+        if (!token) {
+         // Jika tidak ada token (belum login), langsung lempar ke halaman login
+        window.location.href = 'login.html';
+}
+
+        // 2. Jalankan fungsi ini setelah seluruh halaman HTML selesai dimuat
+        document.addEventListener('DOMContentLoaded', () => {
+        // Ganti teks info akun di pojok kanan atas sesuai data login asli
+        // Sesuuaikan id elemen di bawah ini dengan id elemen drop-down/teks di HTML Anda
+        const roleDisplay = document.getElementById('roleDisplay'); // atau sesuaikan id-nya
+  
+        if (roleDisplay) {
+            roleDisplay.innerText = `Masuk Sebagai: ${role.toUpperCase()} (${email})`;
+        }
+
+        // 3. Batasi hak akses tombol berdasarkan Role
+        if (role === 'karyawan') {
+         // Jika karyawan, sembunyikan tombol "Tambah Barang", "Hapus", atau "Edit"
+        const adminButtons = document.querySelectorAll('.btn-admin-only'); 
+        adminButtons.forEach(btn => btn.classList.add('hidden'));
+}
+});
+
+// 4. Tambahkan fungsi Logout (bisa dipasang di tombol Keluar)
+function logout() {
+  localStorage.clear(); // Hapus semua data login
+  window.location.href = 'login.html'; // Lempar kembali ke login
+}
+
         // GANTI URL INI setelah Backend Anda selesai di-hosting
         const API_URL = 'http://localhost:5000/api'; 
 
