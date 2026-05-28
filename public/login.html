@@ -33,10 +33,6 @@
 
       <button type="submit" id="submitBtn" class="w-full bg-blue-600 text-white p-2 rounded-md hover:bg-blue-700 font-semibold transition">Masuk</button>
     </form>
-
-    <div class="mt-4 text-center">
-      <button id="toggleModeBtn" class="text-sm text-blue-500 hover:underline">Belum punya akun? Daftar disini</button>
-    </div>
   </div>
 
   <script>
@@ -63,22 +59,15 @@
       }
     });
 
-    // Proses Submit Form ke API Backend Vercel
+    // Proses Submit Form ke API Backend Vercel / Supabase
     authForm.addEventListener('submit', async (e) => {
       e.preventDefault();
       const email = document.getElementById('email').value;
       const password = document.getElementById('password').value;
       const role = document.getElementById('role').value;
 
-      // URL otomatis menyesuaikan domain Vercel tempat aplikasi berjalan
-      // GANTI BARIS 74 MENJADI SEPERTI INI:
-      const endpoint = isLoginMode 
-        ? 'https://inventory-gudang-one.vercel.app/api/auth/login' 
-        : 'https://inventory-gudang-one.vercel.app/api/auth/register';
-      const bodyData = isLoginMode ? { email, password } : { email, password, role };
-
-     try {
-        // Kredensial Supabase Anda yang sudah dimasukkan secara benar
+      try {
+        // Kredensial Supabase Anda
         const SUPABASE_URL = "https://kghjkyeksacozjuabiqe.supabase.co";
         const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtnaGpreWVrc2Fjb3pqdWFiaXFlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk2ODY5MDksImV4cCI6MjA5NTI2MjkwOX0.khICdbLlwuTurpDoBwelzEhQCLrA04W4yx00dkFDhAw";
 
@@ -107,30 +96,77 @@
             return;
         }
 
-        // Jalur Logika jika memilih DAFTAR AKUN BARU
+        // ==========================================
+        // JALUR LOGIKA DAFTAR AKUN BARU (REGISTER)
+        // ==========================================
         if (!isLoginMode) {
+            // Setelah akun auth terbuat, otomatis daftarkan role ke tabel profiles
+            if (result.user && result.user.id) {
+                await fetch(`${SUPABASE_URL}/rest/v1/profiles`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'apikey': SUPABASE_KEY,
+                        'Authorization': `Bearer ${SUPABASE_KEY}`,
+                        'Prefer': 'return=minimal'
+                    },
+                    body: JSON.stringify({
+                        id: result.user.id,
+                        email: email,
+                        role: role.toLowerCase() // Menyimpan 'owner', 'admin', atau 'karyawan'
+                    })
+                });
+            }
             alert("Pendaftaran Berhasil! Silakan cek kotak masuk email Anda untuk verifikasi.");
+            // Kembalikan ke mode login
+            toggleModeBtn.click();
             return;
         }
 
-        // Jalur Logika jika memilih LOGIN / MASUK
+        // ==========================================
+        // JALUR LOGIKA MASUK (LOGIN)
+        // ==========================================
         if (isLoginMode && result.access_token) {
-            alert("Login Berhasil! Selamat datang, King!");
-            
-            // Simpan token keamanan agar index.html tahu Anda sudah login
+            const userEmail = result.user.email;
+            let userRole = 'karyawan'; // Default cadangan jika data tidak ketemu
+
+            // --- AMBIL DATA ROLE DARI TABEL PROFILES --- [PROSES PENTING 3 ENTITAS]
+            try {
+                const profileResponse = await fetch(`${SUPABASE_URL}/rest/v1/profiles?email=eq.${userEmail}`, {
+                    method: 'GET',
+                    headers: {
+                        'apikey': SUPABASE_KEY,
+                        'Authorization': `Bearer ${result.access_token}`
+                    }
+                });
+
+                if (profileResponse.ok) {
+                    const profileData = await profileResponse.json();
+                    if (profileData && profileData.length > 0) {
+                        // Membaca kolom 'role' atau 'status' di tabel profiles Anda
+                        userRole = (profileData[0].role || profileData[0].status || 'karyawan').toLowerCase();
+                    }
+                }
+            } catch (profileErr) {
+                console.error("Gagal mengambil data profile role:", profileErr);
+            }
+            // -------------------------------------------
+
+            // Simpan data esensial ke LocalStorage
             localStorage.setItem('supabase.auth.token', result.access_token);
+            localStorage.setItem('user_email', userEmail);
+            localStorage.setItem('user_role', userRole); // Isinya dinamis: 'owner', 'admin', atau 'karyawan'
             
-            // Simpan data user (opsional untuk kebutuhan tampilan nama/email di dashboard)
-            localStorage.setItem('user_email', result.user.email);
+            alert(`Login Berhasil! Selamat datang, King! (Akses: ${userRole.toUpperCase()})`);
             
-            // Langsung jebol masuk ke halaman dashboard utama
+            // Pindah halaman ke dashboard utama
             window.location.href = 'index.html';
         }
 
-    } catch (err) {
+      } catch (err) {
         console.error(err);
         alert('Terjadi kesalahan koneksi sistem langsung ke server Supabase.');
-    }
+      }
     });
   </script>
 </body>

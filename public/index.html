@@ -49,7 +49,8 @@
                         </tr>
                     </thead>
                     <tbody id="inventoryTable">
-                        </tbody>
+                        <tr><td colspan="5" class="p-4 text-center text-gray-500">Memuat data barang...</td></tr>
+                    </tbody>
                 </table>
             </div>
         </div>
@@ -89,6 +90,7 @@
         // 1. SATPAM PEMBATAS (AUTH GUARD)
         const sessionToken = localStorage.getItem('supabase.auth.token');
         const savedEmail = localStorage.getItem('user_email');
+        const savedRole = localStorage.getItem('user_role'); // Mengambil role dari localStorage
 
         if (!sessionToken) {
             window.location.href = 'login.html';
@@ -98,15 +100,45 @@
         document.addEventListener('DOMContentLoaded', () => {
             const emailDisplay = document.getElementById('user-email-display');
             if (emailDisplay) {
-                emailDisplay.textContent = savedEmail || 'Owner Gudang';
+                emailDisplay.textContent = savedEmail || 'User Gudang';
             }
+
+            // ========================================================
+            // LOGIKA VALIDASI & PEWARNAAN 3 ENTITAS (ROLE)
+            // ========================================================
+            const roleDisplay = document.getElementById('user-role-display');
+            const adminFormBlock = document.getElementById('adminForm');
+
+            if (roleDisplay) {
+                // Menentukan teks role (Default ke KARYAWAN jika tidak ada data)
+                const currentRole = savedRole ? savedRole.toUpperCase() : 'KARYAWAN';
+                roleDisplay.textContent = currentRole;
+
+                // Mengubah warna badge & kontrol proteksi elemen berdasarkan 3 entitas
+                if (currentRole === 'OWNER') {
+                    // Kuning Emas Tulisan Hitam
+                    roleDisplay.className = "font-extrabold bg-yellow-500 text-black px-2 py-0.5 rounded text-xs ml-1";
+                } else if (currentRole === 'ADMIN') {
+                    // Biru Muda Tulisan Putih
+                    roleDisplay.className = "font-extrabold bg-sky-400 text-white px-2 py-0.5 rounded text-xs ml-1";
+                } else {
+                    // Karyawan biasa -> Badge Hijau Tulisan Putih
+                    roleDisplay.className = "font-extrabold bg-green-500 text-white px-2 py-0.5 rounded text-xs ml-1";
+                    
+                    // PROTEKSI: Sembunyikan form tambah barang jika yang masuk adalah Karyawan
+                    if (adminFormBlock) {
+                        adminFormBlock.classList.add('hidden');
+                    }
+                }
+            }
+            // ========================================================
 
             const transOperatorInput = document.getElementById('transOperator');
             if (transOperatorInput) {
-                transOperatorInput.value = savedEmail || 'Owner';
+                transOperatorInput.value = savedEmail || 'Operator';
             }
 
-            // Jalankan fungsi fetch
+            // Jalankan fungsi fetch barang
             fetchProducts();
         });
 
@@ -123,7 +155,7 @@
                 const response = await axios.get(`${SUPABASE_URL}/rest/v1/products?select=*`, {
                     headers: {
                         'apikey': SUPABASE_KEY,
-                        'Authorization': `Bearer ${sessionToken}` // MENGGUNAKAN SESSION TOKEN ASLI USER
+                        'Authorization': `Bearer ${SUPABASE_KEY}`
                     }
                 });
                 
@@ -135,6 +167,8 @@
                     tableBody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-gray-500">Belum ada stok barang terdaftar. Silakan tambahkan di atas!</td></tr>`;
                     return;
                 }
+
+                products.sort((a, b) => a.id - b.id);
 
                 products.forEach(p => {
                     tableBody.innerHTML += `
@@ -153,15 +187,17 @@
                 });
             } catch (err) {
                 console.error("Gagal memuat data barang:", err);
+                const tableBody = document.getElementById('inventoryTable');
+                tableBody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-red-500 font-medium">Gagal memuat data dari database. Periksa konfigurasi RLS Supabase Anda.</td></tr>`;
             }
         }
 
         // 5. FUNGSI SIMPAN BARANG BARU
         async function addProduct() {
-            const name = document.getElementById('pName').value;
-            const sku = document.getElementById('pSku').value;
+            const name = document.getElementById('pName').value.trim();
+            const sku = document.getElementById('pSku').value.trim();
             const stock = parseInt(document.getElementById('pStock').value) || 0;
-            const location = document.getElementById('pLocation').value;
+            const location = document.getElementById('pLocation').value.trim();
 
             if(!name || !sku) return alert('Nama Barang dan SKU wajib diisi!');
 
@@ -171,7 +207,7 @@
                 {
                     headers: {
                         'apikey': SUPABASE_KEY,
-                        'Authorization': `Bearer ${sessionToken}`, // MENGGUNAKAN SESSION TOKEN ASLI USER
+                        'Authorization': `Bearer ${SUPABASE_KEY}`,
                         'Content-Type': 'application/json',
                         'Prefer': 'return=minimal'
                     }
@@ -187,7 +223,7 @@
                 fetchProducts(); 
             } catch (err) {
                 console.error(err);
-                alert('Gagal menambah barang baru. Pastikan RLS di Supabase sudah dimatikan atau diizinkan.');
+                alert('Gagal menambah barang baru. Pastikan opsi RLS pada tabel products di dasbor Supabase Anda sudah dinonaktifkan.');
             }
         }
 
@@ -213,7 +249,7 @@
 
             try {
                 const getProduct = await axios.get(`${SUPABASE_URL}/rest/v1/products?id=eq.${id}`, {
-                    headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${sessionToken}` }
+                    headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
                 });
                 
                 let currentStock = getProduct.data[0].stock;
@@ -226,7 +262,7 @@
                 {
                     headers: {
                         'apikey': SUPABASE_KEY,
-                        'Authorization': `Bearer ${sessionToken}`,
+                        'Authorization': `Bearer ${SUPABASE_KEY}`,
                         'Content-Type': 'application/json'
                     }
                 });
