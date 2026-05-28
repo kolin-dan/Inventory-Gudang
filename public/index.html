@@ -82,7 +82,7 @@
     </div>
 
     <script>
-        // Kredensial Kunci Supabase Pusat Anda (Sama seperti login.html)
+        // Kredensial Resmi Supabase Pusat Anda
         const SUPABASE_URL = "https://kghjkyeksacozjuabiqe.supabase.co";
         const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtnaGpreWVrc2Fjb3pqdWFiaXFlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk2ODY5MDksImV4cCI6MjA5NTI2MjkwOX0.khICdbLlwuTurpDoBwelzEhQCLrA04W4yx00dkFDhAw";
 
@@ -106,7 +106,7 @@
                 transOperatorInput.value = savedEmail || 'Owner';
             }
 
-            // Langsung panggil data barang dari Supabase
+            // Jalankan fungsi fetch
             fetchProducts();
         });
 
@@ -117,13 +117,13 @@
             window.location.href = 'login.html';
         }
 
-        // 4. FUNGSI AMBIL DATA BARANG (PANGGIL DATA LANGSUNG KELUAR)
+        // 4. FUNGSI AMBIL DATA BARANG
         async function fetchProducts() {
             try {
                 const response = await axios.get(`${SUPABASE_URL}/rest/v1/products?select=*`, {
                     headers: {
                         'apikey': SUPABASE_KEY,
-                        'Authorization': `Bearer ${SUPABASE_KEY}`
+                        'Authorization': `Bearer ${sessionToken}` // MENGGUNAKAN SESSION TOKEN ASLI USER
                     }
                 });
                 
@@ -156,7 +156,7 @@
             }
         }
 
-        // 5. FUNGSI SIMPAN BARANG BARU (TEMBAK LANGSUNG MASUK)
+        // 5. FUNGSI SIMPAN BARANG BARU
         async function addProduct() {
             const name = document.getElementById('pName').value;
             const sku = document.getElementById('pSku').value;
@@ -171,7 +171,7 @@
                 {
                     headers: {
                         'apikey': SUPABASE_KEY,
-                        'Authorization': `Bearer ${SUPABASE_KEY}`,
+                        'Authorization': `Bearer ${sessionToken}`, // MENGGUNAKAN SESSION TOKEN ASLI USER
                         'Content-Type': 'application/json',
                         'Prefer': 'return=minimal'
                     }
@@ -179,16 +179,15 @@
 
                 alert('Barang baru berhasil disimpan ke gudang digital!');
                 
-                // Reset form input biar bersih kembali
                 document.getElementById('pName').value = '';
                 document.getElementById('pSku').value = '';
                 document.getElementById('pStock').value = '';
                 document.getElementById('pLocation').value = '';
                 
-                fetchProducts(); // Refresh tabel biar barang baru langsung muncul
+                fetchProducts(); 
             } catch (err) {
                 console.error(err);
-                alert('Gagal menambah barang baru. Jika ini berlanjut, pastikan opsi RLS (Row Level Security) di tabel products Supabase Anda sudah di-disable atau di-izinkan.');
+                alert('Gagal menambah barang baru. Pastikan RLS di Supabase sudah dimatikan atau diizinkan.');
             }
         }
 
@@ -199,13 +198,12 @@
             document.getElementById('stockModal').classList.remove('hidden');
         }
 
-        // KONTROL MODAL TUTUP
         function closeModal() {
             document.getElementById('stockModal').classList.add('hidden');
             document.getElementById('transQuantity').value = '';
         }
 
-        // 7. PROSES UPDATE JUMLAH STOK BARANG LANGSUNG KE BARIS PRODUK
+        // 7. PROSES UPDATE JUMLAH STOK BARANG
         async function submitStockUpdate() {
             const id = document.getElementById('modalProductId').value;
             const type = document.getElementById('transactionType').value;
@@ -214,9 +212,8 @@
             if(!quantity || quantity <= 0) return alert('Jumlah stok tidak boleh kosong atau bernilai 0!');
 
             try {
-                // Ambil nilai stok lama saat ini untuk dikalkulasi secara realtime
                 const getProduct = await axios.get(`${SUPABASE_URL}/rest/v1/products?id=eq.${id}`, {
-                    headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
+                    headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${sessionToken}` }
                 });
                 
                 let currentStock = getProduct.data[0].stock;
@@ -224,20 +221,19 @@
 
                 if (newStock < 0) return alert('Gagal! Stok gudang tidak boleh minus.');
 
-                // Update total stok baru ke kolom database Supabase
                 await axios.patch(`${SUPABASE_URL}/rest/v1/products?id=eq.${id}`, 
                 { stock: newStock },
                 {
                     headers: {
                         'apikey': SUPABASE_KEY,
-                        'Authorization': `Bearer ${SUPABASE_KEY}`,
+                        'Authorization': `Bearer ${sessionToken}`,
                         'Content-Type': 'application/json'
                     }
                 });
 
                 alert('Stok barang berhasil diperbarui!');
                 closeModal();
-                fetchProducts(); // Refresh data biar angka di tabel langsung berubah
+                fetchProducts();
             } catch (error) {
                 console.error(error);
                 alert('Terjadi kesalahan sistem saat memproses kalkulasi update stok.');
