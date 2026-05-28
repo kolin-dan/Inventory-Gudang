@@ -71,7 +71,10 @@
       const role = document.getElementById('role').value;
 
       // URL otomatis menyesuaikan domain Vercel tempat aplikasi berjalan
-      const endpoint = isLoginMode ? '/api/auth/login' : '/api/auth/register';
+      // GANTI BARIS 74 MENJADI SEPERTI INI:
+      const endpoint = isLoginMode 
+        ? 'https://inventory-gudang-one.vercel.app/api/auth/login' 
+        : 'https://inventory-gudang-one.vercel.app/api/auth/register';
       const bodyData = isLoginMode ? { email, password } : { email, password, role };
 
       try {
