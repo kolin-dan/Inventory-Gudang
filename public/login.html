@@ -77,38 +77,60 @@
         : 'https://inventory-gudang-one.vercel.app/api/auth/register';
       const bodyData = isLoginMode ? { email, password } : { email, password, role };
 
-      try {
-        const response = await fetch(endpoint, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(bodyData)
+     try {
+        // Kredensial Supabase Anda yang sudah dimasukkan secara benar
+        const SUPABASE_URL = "https://kghjkyeksacozjuabiqe.supabase.co";
+        const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtnaGpreWVrc2Fjb3pqdWFiaXFlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk2ODY5MDksImV4cCI6MjA5NTI2MjkwOX0.khICdbLlwuTurpDoBwelzEhQCLrA04W4yx00dkFDhAw";
+
+        // Menentukan endpoint API resmi Supabase berdasarkan mode form
+        const supabaseEndpoint = isLoginMode 
+            ? `${SUPABASE_URL}/auth/v1/token?grant_type=password` 
+            : `${SUPABASE_URL}/auth/v1/signup`;
+
+        const response = await fetch(supabaseEndpoint, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'apikey': SUPABASE_KEY,
+                'Authorization': `Bearer ${SUPABASE_KEY}`
+            },
+            body: JSON.stringify({
+                email: email,
+                password: password
+            })
         });
 
         const result = await response.json();
 
         if (!response.ok) {
-          alert('Error: ' + result.error);
-          return;
+            alert('Error: ' + (result.error_description || result.error || 'Gagal memproses ke Supabase'));
+            return;
         }
 
-        alert(result.message);
-
-        if (isLoginMode) {
-          // Jika sukses login, simpan info user & role ke LocalStorage browser
-          localStorage.setItem('userToken', result.token);
-          localStorage.setItem('userRole', result.user.role);
-          localStorage.setItem('userEmail', result.user.email);
-          
-          // Alihkan halaman ke dashboard utama gudang
-          window.location.href = 'index.html';
-        } else {
-          // Jika sukses register, kembalikan ke mode login
-          toggleModeBtn.click();
+        // Jalur Logika jika memilih DAFTAR AKUN BARU
+        if (!isLoginMode) {
+            alert("Pendaftaran Berhasil! Silakan cek kotak masuk email Anda untuk verifikasi.");
+            return;
         }
-      } catch (err) {
-        alert('Terjadi kesalahan koneksi sistem.');
+
+        // Jalur Logika jika memilih LOGIN / MASUK
+        if (isLoginMode && result.access_token) {
+            alert("Login Berhasil! Selamat datang, King!");
+            
+            // Simpan token keamanan agar index.html tahu Anda sudah login
+            localStorage.setItem('supabase.auth.token', result.access_token);
+            
+            // Simpan data user (opsional untuk kebutuhan tampilan nama/email di dashboard)
+            localStorage.setItem('user_email', result.user.email);
+            
+            // Langsung jebol masuk ke halaman dashboard utama
+            window.location.href = 'index.html';
+        }
+
+    } catch (err) {
         console.error(err);
-      }
+        alert('Terjadi kesalahan koneksi sistem langsung ke server Supabase.');
+    }
     });
   </script>
 </body>
