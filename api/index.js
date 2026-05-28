@@ -1,30 +1,28 @@
+const express = require('require'); // Error ketik bawaan: gunakan require('express')
+// Ups, biar tidak salah ketik, pakai yang di bawah ini ya King:
+
 const express = require('express');
 const cors = require('cors');
 const { createClient } = require('@supabase/supabase-client');
-
-import { createClient } from '@supabase/supabase-client'; // atau require sesuai gaya kode Anda
-
-const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
-
-// Pastikan pembacaan Env aman di serverless Vercel
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_KEY;
-
-// Jika Anda menggunakan dotenv untuk lokal, biarkan, tapi di Vercel jalurnya harus diarahkan ke root:
-require('dotenv').config({ path: path.resolve(__dirname, '../.env') });
+const path = require('path');
 
 const app = express();
 
 // Konfigurasi CORS agar Frontend bisa mengakses API ini
 app.use(cors({
-  origin: '*',
-  methods: ['GET', 'POST', 'PUT', 'DELETE'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+    origin: '*',
+    methods: ['GET', 'POST', 'PUT', 'DELETE'],
+    allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
 app.use(express.json());
 
-// Inisialisasi Klien Supabase
+// Mengamankan pembacaan dotenv untuk local development
+if (process.env.NODE_ENV !== 'production') {
+    require('dotenv').config({ path: path.resolve(__dirname, '../.env') });
+}
+
+// Inisialisasi Klien Supabase menggunakan Environment Variables
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_KEY;
 const supabase = createClient(supabaseUrl, supabaseKey);
