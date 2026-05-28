@@ -1,7 +1,17 @@
 const express = require('express');
 const cors = require('cors');
 const { createClient } = require('@supabase/supabase-client');
-require('dotenv').config();
+
+import { createClient } from '@supabase/supabase-client'; // atau require sesuai gaya kode Anda
+
+const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
+
+// Pastikan pembacaan Env aman di serverless Vercel
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_KEY;
+
+// Jika Anda menggunakan dotenv untuk lokal, biarkan, tapi di Vercel jalurnya harus diarahkan ke root:
+require('dotenv').config({ path: path.resolve(__dirname, '../.env') });
 
 const app = express();
 
