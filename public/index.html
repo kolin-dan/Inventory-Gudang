@@ -81,9 +81,9 @@
     <script>
 
         // 1. Cek apakah user sudah login (apakah ada token di LocalStorage)
-            const token = localStorage.getItem('userToken');
-            const role = localStorage.getItem('userRole');
-            const email = localStorage.getItem('userEmail');
+        const token = localStorage.getItem('userToken');
+        const role = localStorage.getItem('userRole');
+        const email = localStorage.getItem('userEmail');
 
         if (!token) {
          // Jika tidak ada token (belum login), langsung lempar ke halaman login
