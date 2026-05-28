@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login / Register - GudangDigital</title>
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen">
+
+  <div class="bg-white p-8 rounded-lg shadow-md w-full max-w-md">
+    <h2 id="formTitle" class="text-2xl font-bold text-center text-blue-600 mb-6">Login GudangDigital</h2>
+    
+    <form id="authForm" class="space-y-4">
+      <div>
+        <label class="block text-sm font-medium text-gray-700">Email</label>
+        <input type="email" id="email" required class="mt-1 w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+      </div>
+      
+      <div>
+        <label class="block text-sm font-medium text-gray-700">Password</label>
+        <input type="password" id="password" required class="mt-1 w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+      </div>
+
+      <div id="roleContainer" class="hidden">
+        <label class="block text-sm font-medium text-gray-700">Pilih Jabatan (Role)</label>
+        <select id="role" class="mt-1 w-full p-2 border border-gray-300 rounded-md bg-white">
+          <option value="karyawan">Karyawan (Hanya Lihat/Update Stok)</option>
+          <option value="admin">Admin (Kelola Data Barang)</option>
+          <option value="owner">Owner (Hak Penuh Atas Sistem)</option>
+        </select>
+      </div>
+
+      <button type="submit" id="submitBtn" class="w-full bg-blue-600 text-white p-2 rounded-md hover:bg-blue-700 font-semibold transition">Masuk</button>
+    </form>
+
+    <div class="mt-4 text-center">
+      <button id="toggleModeBtn" class="text-sm text-blue-500 hover:underline">Belum punya akun? Daftar disini</button>
+    </div>
+  </div>
+
+  <script>
+    let isLoginMode = true;
+    const authForm = document.getElementById('authForm');
+    const formTitle = document.getElementById('formTitle');
+    const roleContainer = document.getElementById('roleContainer');
+    const submitBtn = document.getElementById('submitBtn');
+    const toggleModeBtn = document.getElementById('toggleModeBtn');
+
+    // Mengubah mode tampilan form (Login <-> Register)
+    toggleModeBtn.addEventListener('click', () => {
+      isLoginMode = !isLoginMode;
+      if (isLoginMode) {
+        formTitle.innerText = 'Login GudangDigital';
+        roleContainer.classList.add('hidden');
+        submitBtn.innerText = 'Masuk';
+        toggleModeBtn.innerText = 'Belum punya akun? Daftar disini';
+      } else {
+        formTitle.innerText = 'Daftar Akun Baru';
+        roleContainer.classList.remove('hidden');
+        submitBtn.innerText = 'Daftar';
+        toggleModeBtn.innerText = 'Sudah punya akun? Login disini';
+      }
+    });
+
+    // Proses Submit Form ke API Backend Vercel
+    authForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+      const role = document.getElementById('role').value;
+
+      // URL otomatis menyesuaikan domain Vercel tempat aplikasi berjalan
+      const endpoint = isLoginMode ? '/api/auth/login' : '/api/auth/register';
+      const bodyData = isLoginMode ? { email, password } : { email, password, role };
+
+      try {
+        const response = await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(bodyData)
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+          alert('Error: ' + result.error);
+          return;
+        }
+
+        alert(result.message);
+
+        if (isLoginMode) {
+          // Jika sukses login, simpan info user & role ke LocalStorage browser
+          localStorage.setItem('userToken', result.token);
+          localStorage.setItem('userRole', result.user.role);
+          localStorage.setItem('userEmail', result.user.email);
+          
+          // Alihkan halaman ke dashboard utama gudang
+          window.location.href = 'index.html';
+        } else {
+          // Jika sukses register, kembalikan ke mode login
+          toggleModeBtn.click();
+        }
+      } catch (err) {
+        alert('Terjadi kesalahan koneksi sistem.');
+        console.error(err);
+      }
+    });
+  </script>
+</body>
+</html>

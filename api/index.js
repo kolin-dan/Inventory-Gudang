@@ -84,5 +84,82 @@ app.delete('/api/products/:id', async (req, res) => {
   }
 });
 
+// ==========================================
+// ENDPOINT AUTENTIKASI (REGISTER & LOGIN)
+// ==========================================
+
+// 1. Endpoint Register (Karyawan / Admin / Owner)
+app.post('/api/auth/register', async (req, res) => {
+  const { email, password, role } = req.body;
+  
+  try {
+    // Validasi input role wajib diisi dan sesuai ketentuan
+    if (!['karyawan', 'admin', 'owner'].includes(role)) {
+      return res.status(400).json({ error: 'Role tidak valid! Pilih karyawan, admin, atau owner.' });
+    }
+
+    // A. Daftarkan akun ke Supabase Auth
+    const { data: authData, error: authError } = await supabase.auth.signUp({
+      email,
+      password,
+    });
+
+    if (authError) throw authError;
+
+    if (authData.user) {
+      // B. Masukkan data profil dan role ke tabel public.profiles
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .insert([
+          { id: authData.user.id, email: email, role: role }
+        ]);
+
+      if (profileError) throw profileError;
+    }
+
+    res.json({ success: true, message: `Registrasi berhasil sebagai ${role}!` });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// 2. Endpoint Login
+app.post('/api/auth/login', async (req, res) => {
+  const { email, password } = req.body;
+
+  try {
+    // A. Verifikasi email & password lewat Supabase Auth
+    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+      email,
+      password
+    });
+
+    if (authError) return res.status(400).json({ error: authError.message });
+
+    // B. Ambil data role pengguna dari tabel profiles berdasarkan ID user yang sukses login
+    const { data: profileData, error: profileError } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', authData.user.id)
+      .single();
+
+    if (profileError) throw profileError;
+
+    // C. Kirim data token session beserta role-nya ke Frontend
+    res.json({
+      success: true,
+      message: 'Login berhasil!',
+      token: authData.session.access_token,
+      user: {
+        id: authData.user.id,
+        email: authData.user.email,
+        role: profileData.role
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Export aplikasi untuk Vercel Serverless
 module.exports = app;
