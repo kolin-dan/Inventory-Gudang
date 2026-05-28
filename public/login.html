@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Login / Register - GudangDigital</title>
+  <title>Login - GudangDigital</title>
   <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
 </head>
 <body class="bg-gray-100 flex items-center justify-center min-h-screen">
@@ -14,67 +14,37 @@
     <form id="authForm" class="space-y-4">
       <div>
         <label class="block text-sm font-medium text-gray-700">Email</label>
-        <input type="email" id="email" required class="mt-1 w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+        <input type="email" id="email" required class="mt-1 w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500" placeholder="nama@email.com">
       </div>
       
       <div>
         <label class="block text-sm font-medium text-gray-700">Password</label>
-        <input type="password" id="password" required class="mt-1 w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+        <input type="password" id="password" required class="mt-1 w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500" placeholder="••••••••">
       </div>
 
-      <div id="roleContainer" class="hidden">
-        <label class="block text-sm font-medium text-gray-700">Pilih Jabatan (Role)</label>
-        <select id="role" class="mt-1 w-full p-2 border border-gray-300 rounded-md bg-white">
-          <option value="karyawan">Karyawan (Hanya Lihat/Update Stok)</option>
-          <option value="admin">Admin (Kelola Data Barang)</option>
-          <option value="owner">Owner (Hak Penuh Atas Sistem)</option>
-        </select>
-      </div>
-
-      <button type="submit" id="submitBtn" class="w-full bg-blue-600 text-white p-2 rounded-md hover:bg-blue-700 font-semibold transition">Masuk</button>
+      <button type="submit" id="submitBtn" class="w-full bg-blue-600 text-white p-2 rounded-md hover:bg-blue-700 font-semibold transition mt-6">
+        Masuk
+      </button>
     </form>
   </div>
 
   <script>
-    let isLoginMode = true;
     const authForm = document.getElementById('authForm');
-    const formTitle = document.getElementById('formTitle');
-    const roleContainer = document.getElementById('roleContainer');
-    const submitBtn = document.getElementById('submitBtn');
-    const toggleModeBtn = document.getElementById('toggleModeBtn');
 
-    // Mengubah mode tampilan form (Login <-> Register)
-    toggleModeBtn.addEventListener('click', () => {
-      isLoginMode = !isLoginMode;
-      if (isLoginMode) {
-        formTitle.innerText = 'Login GudangDigital';
-        roleContainer.classList.add('hidden');
-        submitBtn.innerText = 'Masuk';
-        toggleModeBtn.innerText = 'Belum punya akun? Daftar disini';
-      } else {
-        formTitle.innerText = 'Daftar Akun Baru';
-        roleContainer.classList.remove('hidden');
-        submitBtn.innerText = 'Daftar';
-        toggleModeBtn.innerText = 'Sudah punya akun? Login disini';
-      }
-    });
-
-    // Proses Submit Form ke API Backend Vercel / Supabase
+    // Proses Submit Form ke API Backend Supabase
     authForm.addEventListener('submit', async (e) => {
       e.preventDefault();
+      
       const email = document.getElementById('email').value;
       const password = document.getElementById('password').value;
-      const role = document.getElementById('role').value;
 
       try {
         // Kredensial Supabase Anda
         const SUPABASE_URL = "https://kghjkyeksacozjuabiqe.supabase.co";
         const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtnaGpreWVrc2Fjb3pqdWFiaXFlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk2ODY5MDksImV4cCI6MjA5NTI2MjkwOX0.khICdbLlwuTurpDoBwelzEhQCLrA04W4yx00dkFDhAw";
 
-        // Menentukan endpoint API resmi Supabase berdasarkan mode form
-        const supabaseEndpoint = isLoginMode 
-            ? `${SUPABASE_URL}/auth/v1/token?grant_type=password` 
-            : `${SUPABASE_URL}/auth/v1/signup`;
+        // Endpoint resmi Supabase untuk sign in dengan password
+        const supabaseEndpoint = `${SUPABASE_URL}/auth/v1/token?grant_type=password`;
 
         const response = await fetch(supabaseEndpoint, {
             method: 'POST',
@@ -92,70 +62,42 @@
         const result = await response.json();
 
         if (!response.ok) {
-            alert('Error: ' + (result.error_description || result.error || 'Gagal memproses ke Supabase'));
+            alert('Error Login: ' + (result.error_description || result.error || 'Email atau password salah.'));
             return;
         }
 
-        // ==========================================
-        // JALUR LOGIKA DAFTAR AKUN BARU (REGISTER)
-        // ==========================================
-        if (!isLoginMode) {
-            // Setelah akun auth terbuat, otomatis daftarkan role ke tabel profiles
-            if (result.user && result.user.id) {
-                await fetch(`${SUPABASE_URL}/rest/v1/profiles`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'apikey': SUPABASE_KEY,
-                        'Authorization': `Bearer ${SUPABASE_KEY}`,
-                        'Prefer': 'return=minimal'
-                    },
-                    body: JSON.stringify({
-                        id: result.user.id,
-                        email: email,
-                        role: role.toLowerCase() // Menyimpan 'owner', 'admin', atau 'karyawan'
-                    })
-                });
-            }
-            alert("Pendaftaran Berhasil! Silakan cek kotak masuk email Anda untuk verifikasi.");
-            // Kembalikan ke mode login
-            toggleModeBtn.click();
-            return;
-        }
-
-        // ==========================================
-        // JALUR LOGIKA MASUK (LOGIN)
-        // ==========================================
-        if (isLoginMode && result.access_token) {
+        // Jalur Logika Setelah Berhasil Autentikasi
+        if (result.access_token) {
             const userEmail = result.user.email;
-            let userRole = 'karyawan'; // Default cadangan jika data tidak ketemu
+            let userRole = 'karyawan'; // Fallback default jika role tidak spesifik ditemukan
 
-            // --- AMBIL DATA ROLE DARI TABEL PROFILES --- [PROSES PENTING 3 ENTITAS]
+            // --- AMBIL DATA ROLE DARI TABEL PROFILES ---
             try {
+                // Menggunakan SUPABASE_KEY (anon key) sebagai Authorization untuk bypass RLS read aman
                 const profileResponse = await fetch(`${SUPABASE_URL}/rest/v1/profiles?email=eq.${userEmail}`, {
                     method: 'GET',
                     headers: {
                         'apikey': SUPABASE_KEY,
-                        'Authorization': `Bearer ${result.access_token}`
+                        'Authorization': `Bearer ${SUPABASE_KEY}`
                     }
                 });
 
                 if (profileResponse.ok) {
                     const profileData = await profileResponse.json();
                     if (profileData && profileData.length > 0) {
-                        // Membaca kolom 'role' atau 'status' di tabel profiles Anda
                         userRole = (profileData[0].role || profileData[0].status || 'karyawan').toLowerCase();
+                    } else {
+                        console.warn("User terautentikasi tetapi datanya tidak ditemukan di tabel profiles.");
                     }
                 }
             } catch (profileErr) {
                 console.error("Gagal mengambil data profile role:", profileErr);
             }
-            // -------------------------------------------
 
-            // Simpan data esensial ke LocalStorage
+            // Simpan data esensial ke LocalStorage agar dibaca oleh index.html
             localStorage.setItem('supabase.auth.token', result.access_token);
             localStorage.setItem('user_email', userEmail);
-            localStorage.setItem('user_role', userRole); // Isinya dinamis: 'owner', 'admin', atau 'karyawan'
+            localStorage.setItem('user_role', userRole); 
             
             alert(`Login Berhasil! Selamat datang, King! (Akses: ${userRole.toUpperCase()})`);
             
