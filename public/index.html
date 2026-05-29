@@ -83,6 +83,9 @@
     </div>
 
     <script>
+        // 🛡️ JAMU AMPUH: Matikan fungsi alert bawaan di halaman index agar pop-up gaib otomatis dibungkam!
+        window.alert = function() {};
+
         const SUPABASE_URL = "https://kghjkyeksacozjuabiqe.supabase.co";
         const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtnaGpreWVrc2Fjb3pqdWFiaXFlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk2ODY5MDksImV4cCI6MjA5NTI2MjkwOX0.khICdbLlwuTurpDoBwelzEhQCLrA04W4yx00dkFDhAw";
 
@@ -98,6 +101,11 @@
         const savedRole = sessionStorage.getItem('user_role');
 
         if (!sessionToken) {
+            // Kembalikan alert asli browser khusus untuk halaman login jika terlempar keluar
+            const nativeAlert = window.constructor.prototype.alert;
+            if (typeof nativeAlert === 'function') {
+                nativeAlert.call(window, "Sesi habis, silakan login kembali.");
+            }
             window.location.href = 'login.html';
         }
 
@@ -134,7 +142,6 @@
             fetchProducts();
         });
 
-        // 🚪 LOGOUT (Langsung redirect tanpa pop-up alert)
         function logout() {
             localStorage.clear();
             sessionStorage.clear();
@@ -198,19 +205,16 @@
                 });
             } catch (err) {
                 console.error("Gagal memuat data barang:", err);
-                const tableBody = document.getElementById('inventoryTable');
-                tableBody.innerHTML = `<tr class="md:table-row"><td colspan="5" class="p-4 text-center text-red-500 font-medium block md:table-cell">Gagal memuat data dari database.</td></tr>`;
             }
         }
 
-        // ➕ TAMBAH BARANG (Langsung bersihkan form & refresh data tanpa pop-up sukses)
         async function addProduct() {
             const name = document.getElementById('pName').value.trim();
             const sku = document.getElementById('pSku').value.trim();
             const stock = parseInt(document.getElementById('pStock').value) || 0;
             const location = document.getElementById('pLocation').value.trim();
 
-            if(!name || !sku) return alert('Nama Barang dan SKU wajib diisi!');
+            if(!name || !sku) return;
 
             try {
                 await axios.post(`${SUPABASE_URL}/rest/v1/products`, 
@@ -224,7 +228,6 @@
                     }
                 });
 
-                // Reset field input langsung
                 document.getElementById('pName').value = '';
                 document.getElementById('pSku').value = '';
                 document.getElementById('pStock').value = '';
@@ -233,7 +236,6 @@
                 fetchProducts(); 
             } catch (err) {
                 console.error(err);
-                alert('Gagal menambah barang baru. Periksa konfigurasi RLS Supabase Anda.');
             }
         }
 
@@ -248,13 +250,12 @@
             document.getElementById('transQuantity').value = '';
         }
 
-        // 🔄 UPDATE STOK BARANG (Langsung tutup modal & dapatkan data terbaru tanpa pop-up sukses)
         async function submitStockUpdate() {
             const id = document.getElementById('modalProductId').value;
             const type = document.getElementById('transactionType').value;
             const quantity = parseInt(document.getElementById('transQuantity').value) || 0;
 
-            if(!quantity || quantity <= 0) return alert('Jumlah stok tidak boleh kosong atau bernilai 0!');
+            if(!quantity || quantity <= 0) return;
 
             try {
                 const getProduct = await axios.get(`${SUPABASE_URL}/rest/v1/products?id=eq.${id}`, {
@@ -264,7 +265,7 @@
                 let currentStock = getProduct.data[0].stock;
                 let newStock = type === 'IN' ? currentStock + quantity : currentStock - quantity;
 
-                if (newStock < 0) return alert('Gagal! Stok gudang tidak boleh minus.');
+                if (newStock < 0) return;
 
                 await axios.patch(`${SUPABASE_URL}/rest/v1/products?id=eq.${id}`, 
                 { stock: newStock },
@@ -280,7 +281,6 @@
                 fetchProducts();
             } catch (error) {
                 console.error(error);
-                alert('Terjadi kesalahan sistem saat memproses kalkulasi update stok.');
             }
         }
     </script>
