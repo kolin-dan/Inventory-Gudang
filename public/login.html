@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="id">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -31,7 +31,6 @@
   <script>
     const authForm = document.getElementById('authForm');
 
-    // Proses Submit Form ke API Backend Supabase
     authForm.addEventListener('submit', async (e) => {
       e.preventDefault();
       
@@ -39,11 +38,8 @@
       const password = document.getElementById('password').value;
 
       try {
-        // Kredensial Supabase Anda
         const SUPABASE_URL = "https://kghjkyeksacozjuabiqe.supabase.co";
         const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtnaGpreWVrc2Fjb3pqdWFiaXFlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk2ODY5MDksImV4cCI6MjA5NTI2MjkwOX0.khICdbLlwuTurpDoBwelzEhQCLrA04W4yx00dkFDhAw";
-
-        // Endpoint resmi Supabase untuk sign in dengan password
         const supabaseEndpoint = `${SUPABASE_URL}/auth/v1/token?grant_type=password`;
 
         const response = await fetch(supabaseEndpoint, {
@@ -53,10 +49,7 @@
                 'apikey': SUPABASE_KEY,
                 'Authorization': `Bearer ${SUPABASE_KEY}`
             },
-            body: JSON.stringify({
-                email: email,
-                password: password
-            })
+            body: JSON.stringify({ email, password })
         });
 
         const result = await response.json();
@@ -66,14 +59,11 @@
             return;
         }
 
-        // Jalur Logika Setelah Berhasil Autentikasi
         if (result.access_token) {
             const userEmail = result.user.email;
-            let userRole = 'karyawan'; // Fallback default jika role tidak spesifik ditemukan
+            let userRole = 'karyawan';
 
-            // --- AMBIL DATA ROLE DARI TABEL PROFILES ---
             try {
-                // Menggunakan SUPABASE_KEY (anon key) sebagai Authorization untuk bypass RLS read aman
                 const profileResponse = await fetch(`${SUPABASE_URL}/rest/v1/profiles?email=eq.${userEmail}`, {
                     method: 'GET',
                     headers: {
@@ -86,20 +76,20 @@
                     const profileData = await profileResponse.json();
                     if (profileData && profileData.length > 0) {
                         userRole = (profileData[0].role || profileData[0].status || 'karyawan').toLowerCase();
-                    } else {
-                        console.warn("User terautentikasi tetapi datanya tidak ditemukan di tabel profiles.");
                     }
                 }
             } catch (profileErr) {
                 console.error("Gagal mengambil data profile role:", profileErr);
             }
 
-            // Simpan data esensial ke LocalStorage agar dibaca oleh index.html
             localStorage.setItem('supabase.auth.token', result.access_token);
             localStorage.setItem('user_email', userEmail);
             localStorage.setItem('user_role', userRole); 
             
-            // Pindah halaman ke dashboard utama
+            // 🛡️ TRICK AMPUH: Matikan paksa fungsi alert browser agar script gaib dari Supabase/Vercel tidak bisa muncul
+            window.alert = function() {}; 
+            
+            // Langsung lempar ke halaman utama secara instan
             window.location.href = 'index.html';
         }
 
