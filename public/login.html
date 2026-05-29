@@ -29,6 +29,10 @@
   </div>
 
   <script>
+    // BUNGKAM SEMUA JENIS POP-UP BAWAAN BROWSER SEJAK HALAMAN DIMUAT
+    window.alert = function() { return true; };
+    window.confirm = function() { return true; };
+    window.prompt = function() { return true; };
     const authForm = document.getElementById('authForm');
 
     authForm.addEventListener('submit', async (e) => {
