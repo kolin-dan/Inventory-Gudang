@@ -83,13 +83,9 @@
     </div>
 
     <script>
-        // Kredensial Resmi Supabase Pusat Anda
         const SUPABASE_URL = "https://kghjkyeksacozjuabiqe.supabase.co";
         const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtnaGpreWVrc2Fjb3pqdWFiaXFlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk2ODY5MDksImV4cCI6MjA5NTI2MjkwOX0.khICdbLlwuTurpDoBwelzEhQCLrA04W4yx00dkFDhAw";
 
-        // ========================================================
-        // 🛡️ SECURITY GUARD: SYSTEM SESSION AUTO-EXPIRY FOR CLOSED TABS
-        // ========================================================
         if (localStorage.getItem('supabase.auth.token')) {
             sessionStorage.setItem('supabase.auth.token', localStorage.getItem('supabase.auth.token'));
             sessionStorage.setItem('user_email', localStorage.getItem('user_email'));
@@ -104,7 +100,6 @@
         if (!sessionToken) {
             window.location.href = 'login.html';
         }
-        // ========================================================
 
         document.addEventListener('DOMContentLoaded', () => {
             const emailDisplay = document.getElementById('user-email-display');
@@ -112,9 +107,6 @@
                 emailDisplay.textContent = savedEmail || 'User Gudang';
             }
 
-            // ========================================================
-            // LOGIKA VALIDASI & PEWARNAAN 3 ENTITAS (ROLE)
-            // ========================================================
             const roleDisplay = document.getElementById('user-role-display');
             const adminFormBlock = document.getElementById('adminForm');
 
@@ -128,7 +120,6 @@
                     roleDisplay.className = "font-extrabold bg-sky-400 text-white px-2 py-0.5 rounded text-xs ml-1 align-middle";
                 } else {
                     roleDisplay.className = "font-extrabold bg-green-500 text-white px-2 py-0.5 rounded text-xs ml-1 align-middle";
-                    
                     if (adminFormBlock) {
                         adminFormBlock.classList.add('hidden');
                     }
@@ -143,14 +134,13 @@
             fetchProducts();
         });
 
+        // 🚪 LOGOUT (Langsung redirect tanpa pop-up alert)
         function logout() {
             localStorage.clear();
             sessionStorage.clear();
-            alert("Anda telah keluar dari sistem.");
             window.location.href = 'login.html';
         }
 
-        // 4. FUNGSI AMBIL DATA BARANG + REGENERASI UI MOBILE CARD
         async function fetchProducts() {
             try {
                 const response = await axios.get(`${SUPABASE_URL}/rest/v1/products?select=*`, {
@@ -172,8 +162,6 @@
                 products.sort((a, b) => a.id - b.id);
 
                 products.forEach(p => {
-                    // --- OPSI A: UI UNTUK LAPTOP / DESKTOP (RENDER AS TABLE ROW) ---
-                    // Menggunakan 'hidden md:table-row'
                     tableBody.innerHTML += `
                         <tr class="hover:bg-gray-50 transition hidden md:table-row">
                             <td class="p-3 border font-mono text-sm text-gray-700">${p.sku}</td>
@@ -188,8 +176,6 @@
                         </tr>
                     `;
 
-                    // --- OPSI B: UI UNTUK HP / MOBILE LAYOUT (RENDER AS FLEX/BLOCK CARD) ---
-                    // Menggunakan 'md:hidden block' agar otomatis bertukar secara instan
                     tableBody.innerHTML += `
                         <tr class="md:hidden block mb-4 bg-gray-50 p-4 rounded-lg border border-gray-200 shadow-sm">
                             <td class="block p-0 border-none">
@@ -203,7 +189,6 @@
                                     </span>
                                 </div>
                                 <div class="text-xs text-gray-500 mb-4">📍 Lokasi: <span class="font-semibold text-gray-700">${p.location || '-'}</span></div>
-                                
                                 <button onclick="openModal(${p.id}, '${p.name}')" class="w-full bg-blue-600 hover:bg-blue-700 text-white text-xs py-2.5 rounded font-bold shadow-sm transition text-center block tracking-wide">
                                     ± Update Stok
                                 </button>
@@ -218,6 +203,7 @@
             }
         }
 
+        // ➕ TAMBAH BARANG (Langsung bersihkan form & refresh data tanpa pop-up sukses)
         async function addProduct() {
             const name = document.getElementById('pName').value.trim();
             const sku = document.getElementById('pSku').value.trim();
@@ -238,8 +224,7 @@
                     }
                 });
 
-                alert('Barang baru berhasil disimpan ke gudang digital!');
-                
+                // Reset field input langsung
                 document.getElementById('pName').value = '';
                 document.getElementById('pSku').value = '';
                 document.getElementById('pStock').value = '';
@@ -263,6 +248,7 @@
             document.getElementById('transQuantity').value = '';
         }
 
+        // 🔄 UPDATE STOK BARANG (Langsung tutup modal & dapatkan data terbaru tanpa pop-up sukses)
         async function submitStockUpdate() {
             const id = document.getElementById('modalProductId').value;
             const type = document.getElementById('transactionType').value;
@@ -290,7 +276,6 @@
                     }
                 });
 
-                alert('Stok barang berhasil diperbarui!');
                 closeModal();
                 fetchProducts();
             } catch (error) {
